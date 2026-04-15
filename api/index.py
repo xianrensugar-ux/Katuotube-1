@@ -797,6 +797,11 @@ def trending():
 
 
 # --- 追加ルート: 新しいAPI形式に対応したm3u8取得 ---
+import re
+import json
+import urllib.parse
+from flask import Response, request, jsonify
+
 @app.route('/api/m3u8_proxy')
 @login_required
 def m3u8_proxy():
@@ -838,7 +843,7 @@ def m3u8_proxy():
                     final_url = high_url
                     final_res = "High Quality"
                 else:
-                    best_format = sorted_formats # リストの0番目を辞書として取得
+                    best_format = sorted_formats #を追加して辞書を取得
                     final_url = best_format.get('url')
                     final_res = best_format.get('resolution')
 
@@ -847,8 +852,11 @@ def m3u8_proxy():
                 content = m3u8_res.text
 
                 # プレイリスト内の https://... リンクをすべて自サーバー経由に置換
+                # 【重要】URLをURLエンコードしてから結合するように修正
                 def replace_url(match):
-                    return f"/api/m3u8_segment?url={match.group(0)}"
+                    original_url = match.group(0)
+                    encoded_url = urllib.parse.quote(original_url, safe='')
+                    return f"/api/m3u8_segment?url={encoded_url}"
                 
                 proxied_content = re.sub(r'https?://[^\s\"\'\>]+', replace_url, content)
 
@@ -866,16 +874,21 @@ def m3u8_proxy():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# 動画セグメントを中継するエンドポイントを新規追加
+# 動画セグメントを中継するエンドポイント
 @app.route('/api/m3u8_segment')
 def m3u8_segment():
     target_url = request.args.get('url')
     if not target_url:
         return "URL is required", 400
     try:
-        res = http_session.get(target_url, stream=True, timeout=20.0)
+        # YouTube側へのリクエストに偽装ヘッダーを追加してブロックを回避
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': 'https://www.youtube.com/'
+        }
+        res = http_session.get(target_url, headers=headers, stream=True, timeout=20.0, allow_redirects=True)
         return Response(
-            res.iter_content(chunk_size=1024*64),
+            res.iter_content(chunk_size=1024*128),
             content_type=res.headers.get('Content-Type'),
             headers={"Access-Control-Allow-Origin": "*"}
         )
