@@ -38,16 +38,23 @@ app.config['JSON_AS_ASCII'] = False
 app.config['JSON_SORT_KEYS'] = False # [高速化] JSONのソートを無効化
 app.secret_key = os.environ.get('SESSION_SECRET', os.environ.get('SECRET_KEY', 'katuotube-key'))
 
-# セッション設定
+# セッション設定 (iPad/Safari対策: 有効期限とリフレッシュ設定を追加)
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(days=7)
+app.config['SESSION_REFRESH_EACH_REQUEST'] = True
+
+@app.before_request
+def make_session_permanent():
+    session.permanent = True
 
 @app.after_request
 def after_request(response):
     response.headers.remove('X-Frame-Options')
-    response.headers['X-Frame-Options'] = 'ALLOWALL'
-    response.headers['Content-Security-Policy'] = "frame-ancestors *; frame-src *;"
+    # iPad/Safari対策: frame-ancestorsに '*' を指定し、具体的かつ広範な許可を与える
+    response.headers['Content-Security-Policy'] = "frame-ancestors 'self' *; frame-src 'self' * https:;"
+    response.headers['Access-Control-Allow-Origin'] = '*'
     return response
 
 PASSWORD = os.environ.get('APP_PASSWORD', 'katuo')
