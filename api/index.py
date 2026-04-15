@@ -831,22 +831,26 @@ def m3u8_proxy():
                     final_url = high_url
                     final_res = "High Quality"
                 else:
-                    best_format = sorted_formats[0] # リストの0番目を辞書として取得
+                    best_format = sorted_formats # リストの0番目を辞書として取得
                     final_url = best_format.get('url')
                     final_res = best_format.get('resolution')
 
-                return jsonify({
-                    "success": True,
-                    "m3u8_url": final_url,
-                    "resolution": final_res,
-                    "format": "m3u8",
-                    "all_formats": sorted_formats
-                })
+                # 【修正箇所】CORS回避のため、m3u8の内容をサーバーで取得して直接返す
+                m3u8_res = http_session.get(final_url, timeout=10.0)
+                return Response(
+                    m3u8_res.text,
+                    mimetype='application/vnd.apple.mpegurl',
+                    headers={
+                        "Access-Control-Allow-Origin": "*",
+                        "X-Resolution": final_res,
+                        "X-Formats": json.dumps(sorted_formats)
+                    }
+                )
         
         return jsonify({"error": "m3u8 not found from new API"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
+        
 @app.route('/subscribe.html')
 def subscribe():
     return render_template('subscribe.html')
