@@ -51,15 +51,21 @@ def make_session_permanent():
 
 @app.after_request
 def after_request(response):
-    if 'X-Frame-Options' in response.headers:
-        del response.headers['X-Frame-Options']
-
-    response.headers['Content-Security-Policy'] = (
-        "frame-ancestors https://katuotube-1-sennin.onrender.com"
-    )
-
+    # X-Frame-Options を削除または空にする (CSPのframe-ancestorsを優先させるため)
+    # サーバー(Nginx等)で付与されている場合を考慮し、空文字で上書きを試みます
+    response.headers['X-Frame-Options'] = ''
+    
+    # Content-Security-Policy: frame-ancestors に '*' ではなくプロトコルを明示
+    # これによりiPad Safariでの読み込み許可をより確実にします
+    csp_value = "frame-ancestors 'self' https: http:; frame-src 'self' https: http: data:;"
+    response.headers['Content-Security-Policy'] = csp_value
+    
+    # CORS設定 (iframe内から外部APIを叩く場合に必要)
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    
     return response
-
 PASSWORD = os.environ.get('APP_PASSWORD', 'katuo')
 
 PRIORITY_INSTANCE = "https://yt.omada.cafe"
