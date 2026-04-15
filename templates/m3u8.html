@@ -108,7 +108,7 @@
                 const proxyUrl = `/api/m3u8_proxy?v=${id}`;
                 const res = await fetch(proxyUrl);
                 
-                // ヘッダーから画質情報を取得
+                // ヘッダーから情報を読み取る
                 const resolution = res.headers.get('X-Resolution') || 'Unknown';
                 const formats = JSON.parse(res.headers.get('X-Formats') || '[]');
 
@@ -132,8 +132,9 @@
                         item.onclick = () => {
                             document.querySelectorAll('.quality-item').forEach(el => el.classList.remove('active'));
                             item.classList.add('active');
-                            // 個別画質への切り替え（プロキシ経由で直接URLを指定）
-                            loadStream(fmt.url); 
+                            // 他の画質URLもプロキシ経由で開く
+                            const formatProxyUrl = `/api/m3u8_segment?url=${encodeURIComponent(fmt.url)}`;
+                            loadStream(formatProxyUrl);
                         };
                         qualityMenu.appendChild(item);
                     });
