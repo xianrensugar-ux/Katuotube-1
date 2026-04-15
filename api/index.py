@@ -51,10 +51,13 @@ def make_session_permanent():
 
 @app.after_request
 def after_request(response):
-    response.headers.remove('X-Frame-Options')
-    # iPad/Safari対策: frame-ancestorsに '*' を指定し、具体的かつ広範な許可を与える
-    response.headers['Content-Security-Policy'] = "frame-ancestors 'self' *; frame-src 'self' * https:;"
-    response.headers['Access-Control-Allow-Origin'] = '*'
+    if 'X-Frame-Options' in response.headers:
+        del response.headers['X-Frame-Options']
+
+    response.headers['Content-Security-Policy'] = (
+        "frame-ancestors https://katuotube-1-sennin.onrender.com"
+    )
+
     return response
 
 PASSWORD = os.environ.get('APP_PASSWORD', 'katuo')
