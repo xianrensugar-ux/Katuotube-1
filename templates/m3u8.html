@@ -81,7 +81,11 @@
             loader.style.display = 'block';
             if (Hls.isSupported()) {
                 if (hls) hls.destroy();
-                hls = new Hls();
+                hls = new Hls({
+                    // セグメント読み込み時のエラー耐性を向上
+                    enableWorker: true,
+                    lowLatencyMode: true
+                });
                 hls.loadSource(url);
                 hls.attachMedia(video);
                 hls.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -132,7 +136,8 @@
                         item.onclick = () => {
                             document.querySelectorAll('.quality-item').forEach(el => el.classList.remove('active'));
                             item.classList.add('active');
-                            // 他の画質URLもプロキシ経由で開く
+                            // 他の個別画質URLも、セグメント書き換えプロキシを通すために
+                            // 一旦 /api/m3u8_segment 経由でリクエストするように構築
                             const formatProxyUrl = `/api/m3u8_segment?url=${encodeURIComponent(fmt.url)}`;
                             loadStream(formatProxyUrl);
                         };
