@@ -105,37 +105,42 @@
             
             try {
                 loader.style.display = 'block';
-                const res = await fetch(`/api/m3u8_proxy?v=${id}`);
-                const data = await res.json();
+                const proxyUrl = `/api/m3u8_proxy?v=${id}`;
+                const res = await fetch(proxyUrl);
                 
-                if (data.success && data.m3u8_url) {
+                // ヘッダーから画質情報を取得
+                const resolution = res.headers.get('X-Resolution') || 'Unknown';
+                const formats = JSON.parse(res.headers.get('X-Formats') || '[]');
+
+                if (res.ok) {
                     qualityMenu.innerHTML = '';
                     
                     const autoItem = document.createElement('div');
                     autoItem.className = 'quality-item active';
-                    autoItem.innerText = `自動 (${data.resolution})`;
+                    autoItem.innerText = `自動 (${resolution})`;
                     autoItem.onclick = () => {
                         document.querySelectorAll('.quality-item').forEach(el => el.classList.remove('active'));
                         autoItem.classList.add('active');
-                        loadStream(data.m3u8_url);
+                        loadStream(proxyUrl);
                     };
                     qualityMenu.appendChild(autoItem);
 
-                    data.all_formats.forEach((fmt) => {
+                    formats.forEach((fmt) => {
                         const item = document.createElement('div');
                         item.className = 'quality-item';
                         item.innerText = fmt.resolution + (fmt.format ? ` (${fmt.format})` : '');
                         item.onclick = () => {
                             document.querySelectorAll('.quality-item').forEach(el => el.classList.remove('active'));
                             item.classList.add('active');
-                            loadStream(fmt.url);
+                            // 個別画質への切り替え（プロキシ経由で直接URLを指定）
+                            loadStream(fmt.url); 
                         };
                         qualityMenu.appendChild(item);
                     });
 
-                    loadStream(data.m3u8_url);
+                    loadStream(proxyUrl);
                 } else {
-                    console.error("API error:", data.error);
+                    console.error("API error");
                     loader.style.display = 'none';
                 }
             } catch (e) { 
