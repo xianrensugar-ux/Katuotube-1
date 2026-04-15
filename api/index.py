@@ -309,7 +309,8 @@ def watch():
                            format_streams=format_streams,
                            comments=comments,
                            theme=theme,
-                           mode=request.args.get('mode', 'stream'))
+                           mode=request.args.get('mode', 'stream'),
+                           likes=video_info.get('likeCount', 0))
 
 @app.route('/proxy/thumb')
 def thumb_proxy():
