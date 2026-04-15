@@ -835,10 +835,18 @@ def m3u8_proxy():
                     final_url = best_format.get('url')
                     final_res = best_format.get('resolution')
 
-                # 【修正箇所】CORS回避のため、m3u8の内容をサーバーで取得して直接返す
+                # --- 修正箇所: m3u8のURL書き換えプロキシ処理 ---
                 m3u8_res = http_session.get(final_url, timeout=10.0)
+                content = m3u8_res.text
+
+                # プレイリスト内の https://... リンクをすべて自サーバー経由に置換
+                def replace_url(match):
+                    return f"/api/m3u8_segment?url={match.group(0)}"
+                
+                proxied_content = re.sub(r'https?://[^\s\"\'\>]+', replace_url, content)
+
                 return Response(
-                    m3u8_res.text,
+                    proxied_content,
                     mimetype='application/vnd.apple.mpegurl',
                     headers={
                         "Access-Control-Allow-Origin": "*",
@@ -850,6 +858,22 @@ def m3u8_proxy():
         return jsonify({"error": "m3u8 not found from new API"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# 動画セグメントを中継するエンドポイントを新規追加
+@app.route('/api/m3u8_segment')
+def m3u8_segment():
+    target_url = request.args.get('url')
+    if not target_url:
+        return "URL is required", 400
+    try:
+        res = http_session.get(target_url, stream=True, timeout=20.0)
+        return Response(
+            res.iter_content(chunk_size=1024*64),
+            content_type=res.headers.get('Content-Type'),
+            headers={"Access-Control-Allow-Origin": "*"}
+        )
+    except Exception as e:
+        return str(e), 500
         
 @app.route('/subscribe.html')
 def subscribe():
